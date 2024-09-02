@@ -1,9 +1,12 @@
 import os
+from dotenv import load_dotenv
 from datetime import datetime, timedelta, timezone
 from passlib.context import CryptContext
 from sqlalchemy.orm import Session
 import jwt
 from . import models, schemas
+
+load_dotenv()
 
 SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = os.getenv("ALGORITHM")
