@@ -21,3 +21,18 @@ def create_user(db: Session, user: schemas.UserCreate):
     db.commit()
     db.refresh(db_user)
     return db_user
+
+def update_user_elo(db: Session, user_id: int, elo_change: int):
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if user:
+        user.elo_rating += elo_change
+        db.commit()
+        db.refresh(user)
+    return user
+
+def create_contest_result(db: Session, contest_result: schemas.ContestResultCreate):
+    db_contest_result = models.ContestResult(**contest_result.model_dump())
+    db.add(db_contest_result)
+    db.commit()
+    db.refresh(db_contest_result)
+    return db_contest_result
