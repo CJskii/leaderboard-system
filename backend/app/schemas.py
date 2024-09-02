@@ -11,6 +11,15 @@ class User(UserBase):
     points: int
     participation_days: int
     role: str
+    is_active: bool
+    is_admin: bool
 
     class Config:
         from_attributes = True
+
+class Token (BaseModel):
+    access_token: str
+    token_type: str
+
+class TokenData(BaseModel):
+    username: str | None = None
