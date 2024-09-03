@@ -1,9 +1,11 @@
 import math
+from sqlalchemy.orm import Session
 from app.models import calculate_current_elo, BugReport, EloHistory
 
-duplicated_penality_multiplayer = 0.1 # All Watsons
-invalid_report_penality = 10 # All Watsons
-no_bugs_found_penality = 20 # Senior / Reserve Watson
+# Constants
+DUPLICATE_PENALTY_MULTIPLIER = 0.1  # All Watsons
+INVALID_REPORT_PENALTY = 10  # All Watsons
+NO_BUGS_FOUND_PENALTY = 20  # Senior / Reserve Watson
 
 class ELOService:
     def __init__(self, k_factor=32):
@@ -14,7 +16,7 @@ class ELOService:
         return 1 / (1 + math.pow(10, (opponent_elo - user_elo) / 400))
 
     @staticmethod
-    def get_opponent_elos(contest, user_id, session):
+    def get_opponent_elos(contest, user_id, session: Session):
         opponent_elos = session.query(EloHistory.elo_points_after).select_from(BugReport).join(
             EloHistory, BugReport.user_id == EloHistory.user_id
         ).filter(
@@ -28,7 +30,7 @@ class ELOService:
     def calculate_opponent_elo(opponent_elos):
         if opponent_elos:
             return sum(opponent_elos) / len(opponent_elos)
-        return 100 # Default ELO value
+        return 100  # Default ELO value
 
     @staticmethod
     def get_severity_weight(severity):
@@ -40,16 +42,16 @@ class ELOService:
         return severity_weights.get(severity.lower(), 1.0)
 
     @staticmethod
-    def get_duplicate_penalty(bug_report, session):
+    def get_duplicate_penalty(bug_report, session: Session):
         duplicate_count = session.query(BugReport).filter(
             BugReport.bug_id == bug_report.bug_id,
             BugReport.user_id != bug_report.user_id
         ).count()
 
-        penalty = duplicated_penality_multiplayer * duplicate_count
+        penalty = DUPLICATE_PENALTY_MULTIPLIER * duplicate_count
         return penalty
 
-    def calculate_elo_change(self, user, contest, reported_bugs, session):
+    def calculate_elo_change(self, user, contest, reported_bugs, session: Session):
         user_elo = calculate_current_elo(user.id, session)
         opponent_elos = self.get_opponent_elos(contest, user.id, session)
         opponent_elo = self.calculate_opponent_elo(opponent_elos)
@@ -77,8 +79,8 @@ class ELOService:
         return total_elo_change
 
     @staticmethod
-    def apply_invalid_submission_penalty(user, contest, invalid_reports, session):
-        penalty = invalid_report_penality * invalid_reports
+    def apply_invalid_submission_penalty(user, contest, invalid_reports, session: Session):
+        penalty = INVALID_REPORT_PENALTY * invalid_reports
         current_elo = calculate_current_elo(user.id, session)
         new_elo = max(current_elo - penalty, 0)
 
@@ -94,7 +96,7 @@ class ELOService:
         session.commit()
 
     @staticmethod
-    def apply_participation_penalty(user, contest, session):
+    def apply_participation_penalty(user, contest, session: Session):
         if user.role in ['senior_watson', 'reserve_watson']:
             others_found_bugs = session.query(BugReport).filter(
                 BugReport.contest_id == contest.id,
@@ -107,7 +109,7 @@ class ELOService:
             ).count()
 
             if others_found_bugs > 0 and user_found_bugs == 0:
-                penalty = no_bugs_found_penality
+                penalty = NO_BUGS_FOUND_PENALTY
                 current_elo = calculate_current_elo(user.id, session)
                 new_elo = max(current_elo - penalty, 0)
 
