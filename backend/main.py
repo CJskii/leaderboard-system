@@ -5,7 +5,7 @@ from app import crud, models, schemas, auth
 from app.database import SessionLocal, engine
 from datetime import timedelta
 import jwt
-from app.elo_service import EloService, calculate_auditor_performance
+from app.elo_service import ELOService
 
 models.Base.metadata.create_all(bind=engine)
 app = FastAPI()
@@ -13,7 +13,7 @@ app = FastAPI()
 # OAuth2 scheme for bearer token
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
-elo_service = EloService(k=32)
+elo_service = ELOService()
 
 def get_db():
     db = SessionLocal()
@@ -42,45 +42,6 @@ def get_current_user(db: Session = Depends(get_db), token: str = Depends(oauth2_
     if user is None:
         raise credentials_exception
     return user
-
-def process_contest_results(db: Session, contest_id: int):
-    contest = db.query(models.Contest).filter(models.Contest.id == contest_id).first()
-    auditors = contest.participants
-    bugs = contest.found_bugs
-
-    # Calculate the average performance across all participants
-    total_performance = sum(calculate_auditor_performance(auditor, bugs) for auditor in auditors)
-    average_performance = total_performance / len(auditors)
-    average_rating = sum(auditor.elo_points for auditor in auditors) / len(auditors)
-
-    for auditor in auditors:
-        auditor_performance = calculate_auditor_performance(auditor, bugs)
-        performance_ratio = auditor_performance / average_performance
-
-        elo_change = elo_service.calculate_elo_change(
-            user_rating=auditor.elo_points,
-            average_opponent_rating=average_rating,
-            performance_ratio=performance_ratio
-        )
-
-        crud.update_user_elo(db, auditor.id, elo_change)
-        contest_result_data = schemas.ContestResultCreate(
-            user_id=auditor.id,
-            contest_id=contest_id,
-            score=auditor_performance,
-            elo_change=elo_change
-        )
-        crud.create_contest_result(db, contest_result_data)
-
-def penalize_non_performance(db: Session, contest_id: int):
-    contest = db.query(models.Contest).filter(models.Contest.id == contest_id).first()
-    auditors = contest.participants
-
-    for auditor in auditors:
-        if 30 < auditor.rank <= 100 and auditor.performance == 0:
-            # Penalize for not finding any bugs
-            penalty = -10  # or adjust based on your system
-            crud.update_user_elo(db, auditor.id, penalty)
 
 @app.get("/")
 def read_root():
