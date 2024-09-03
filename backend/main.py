@@ -1,11 +1,11 @@
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, Depends, HTTPException, status, Header
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from app import crud, models, schemas, auth
 from app.database import SessionLocal, engine
 from datetime import timedelta
 import jwt
-from app.elo_service import ELOService
+import os
 
 models.Base.metadata.create_all(bind=engine)
 app = FastAPI()
@@ -13,7 +13,8 @@ app = FastAPI()
 # OAuth2 scheme for bearer token
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
-elo_service = ELOService()
+# Default admin token - should be changed in production
+ADMIN_TOKEN = os.getenv("ADMIN_TOKEN", "your-secure-admin-token")
 
 def get_db():
     db = SessionLocal()
@@ -43,6 +44,13 @@ def get_current_user(db: Session = Depends(get_db), token: str = Depends(oauth2_
         raise credentials_exception
     return user
 
+def verify_admin_token(admin_token: str = Header(...)):
+    if admin_token != ADMIN_TOKEN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Invalid admin token.",
+        )
+    return True
 @app.get("/")
 def read_root():
     return {"message": "Hello World"}
@@ -66,6 +74,14 @@ def login_for_access_token(db: Session = Depends(get_db), form_data: OAuth2Passw
     access_token_expires = timedelta(minutes=auth.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = auth.create_access_token(data={"sub": user.username}, expires_delta=access_token_expires)
     return {"access_token": access_token, "token_type": "bearer"}
+
+@app.post("/contests/{contest_id}/process_elo")
+def process_elo(
+    contest_id: int,
+    db: Session = Depends(get_db),
+    _: bool = Depends(verify_admin_token)  # Ensure correct admin token is provided
+):
+    return crud.process_contest_elo(contest_id, db)
 
 @app.get("/users/", response_model=list[schemas.User])
 def read_users(skip: int = 0, limit: int = 10, db: Session = Depends(get_db)):
