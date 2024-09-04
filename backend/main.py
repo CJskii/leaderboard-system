@@ -1,11 +1,13 @@
+import os
+from datetime import timedelta
+
+import jwt
 from fastapi import FastAPI, Depends, HTTPException, status, Header
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
+
 from app import crud, models, schemas, auth
 from app.database import SessionLocal, engine
-from datetime import timedelta, datetime
-import jwt
-import os
 
 models.Base.metadata.create_all(bind=engine)
 app = FastAPI()
@@ -79,13 +81,31 @@ def login_for_access_token(db: Session = Depends(get_db), form_data: OAuth2Passw
 def process_elo(
     contest_id: int,
     db: Session = Depends(get_db),
-    _: bool = Depends(verify_admin_token)  # Ensure correct admin token is provided
+    _: bool = Depends(verify_admin_token)  # Admin token check
 ):
-    # 1: Process ELO for all participants
-    participants = crud.process_contest_elo(contest_id, db)
-    # 2: Update user roles based on their new ELO rankings
-    crud.update_user_roles(db, participants)
-    return {"message": "ELO points and roles updated for contest participants"}
+    try:
+        # TODO: review how to do this in one transaction
+        # 1: Process ELO for all participants
+        participants = crud.process_contest_elo(contest_id, db)
+        # 2: Update user roles based on their new ELO rankings
+        crud.update_user_roles(participants, db)
+        return {"message": "ELO points and roles updated for contest participants"}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail="Error during processing: " + str(e))
+
+# Create endpoint to sign up for contest
+@app.post("/contests/{contest_id}/signup/{user_id}")
+def signup_for_contest(
+    contest_id: int,
+    user_id: int,
+    db: Session = Depends(get_db),
+):
+    try:
+        crud.signup_for_contest(user_id, contest_id, db)
+        return {"message": "User signed up for contest"}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail="Error during signup: " + str(e))
+
 
 @app.get("/users/", response_model=list[schemas.User])
 def read_users(skip: int = 0, limit: int = 10, db: Session = Depends(get_db)):

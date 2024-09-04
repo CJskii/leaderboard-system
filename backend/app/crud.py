@@ -1,8 +1,12 @@
-from fastapi import HTTPException, status
+import datetime
+
+from fastapi import HTTPException
 from sqlalchemy import desc, func
 from sqlalchemy.orm import Session
+
 from . import models, schemas, auth
 from .elo_service import ELOService
+from .models import contest_participants
 
 elo_service = ELOService()
 
@@ -32,6 +36,7 @@ def update_elo_points(db: Session, user: models.User, contest: models.Contest, e
     db.commit()
     db.refresh(user)
 
+# TODO: optimize this function
 def process_contest_elo(contest_id: int, db: Session):
     contest = db.query(models.Contest).filter(models.Contest.id == contest_id).first()
     if not contest:
@@ -59,12 +64,10 @@ def process_contest_elo(contest_id: int, db: Session):
 
     db.commit()
 
-    update_user_roles(db, processed_participants)
-
     return processed_participants
 
 
-def update_user_roles(db: Session, users_to_update: list[models.User]):
+def update_user_roles(users_to_update: list[models.User], db: Session ):
     leaderboard = db.query(models.User).join(models.EloHistory).group_by(models.User.id).order_by(
         desc(func.sum(models.EloHistory.elo_points_after))
     ).limit(100).all()
@@ -93,3 +96,36 @@ def update_user_roles(db: Session, users_to_update: list[models.User]):
 
     return users_to_update_roles
 
+
+def signup_for_contest(user_id: int, contest_id: int, db: Session):
+    contest_user = db.query(models.Contest, models.User).filter(
+        models.Contest.id == contest_id,
+        models.User.id == user_id
+    ).first()
+
+    if not contest_user:
+        raise ValueError("Contest or User not found")
+
+    contest, user = contest_user
+
+    signup_date = datetime.datetime.now(datetime.timezone.utc)
+    if contest.end_date < signup_date:
+        raise ValueError("Contest has ended already")
+
+    existing_signup = db.query(contest_participants).filter(
+        contest_participants.c.user_id == user.id,
+        contest_participants.c.contest_id == contest_id
+    ).exists()
+
+    if db.query(existing_signup).scalar():
+        raise ValueError("User is already signed up for this contest")
+
+    db.execute(
+        contest_participants.insert().values(
+            contest_id=contest_id,
+            user_id=user_id,
+            signup_date=signup_date
+        )
+    )
+
+    db.commit()

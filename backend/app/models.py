@@ -15,7 +15,6 @@ class User(Base):
     is_active = Column(Boolean, default=True)
     is_admin = Column(Boolean, default=False)
 
-    contest_results = relationship("ContestResult", back_populates="user")
     elo_history = relationship("EloHistory", back_populates="user")
     reported_bugs = relationship("BugReport", back_populates="reporter")
 
@@ -23,6 +22,9 @@ class Contest(Base):
     __tablename__ = "contest"
 
     id = Column(Integer, primary_key=True, index=True)
+    # TODO: remove default values for start and end date and adjust tests accordingly
+    start_date = Column(DateTime, nullable=False, default=datetime.now(timezone.utc))
+    end_date = Column(DateTime, nullable=False, default=datetime.now(timezone.utc))
     date = Column(DateTime, default=datetime.now(timezone.utc))
 
     participants = relationship("User", secondary="contest_participants")
@@ -33,7 +35,8 @@ contest_participants = Table(
     'contest_participants',
     Base.metadata,
     Column('contest_id', Integer, ForeignKey('contest.id')),
-    Column('user_id', Integer, ForeignKey('user.id'))
+    Column('user_id', Integer, ForeignKey('user.id')),
+    Column('signup_date', DateTime, default=datetime.now(timezone.utc))
 )
 
 class Bug(Base):
@@ -62,18 +65,6 @@ class BugReport(Base):
     reporter = relationship("User", back_populates="reported_bugs")
     bug = relationship("Bug", back_populates="reports")
     contest = relationship("Contest", back_populates="bug_reports")
-
-class ContestResult(Base):
-    __tablename__ = "contest_result"
-
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("user.id"))
-    contest_id = Column(Integer, ForeignKey("contest.id"))
-    score = Column(Integer)
-    elo_change = Column(Integer)
-
-    user = relationship("User", back_populates="contest_results")
-    contest = relationship("Contest")
 
 class EloHistory(Base):
     __tablename__ = "elo_history"
