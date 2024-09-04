@@ -93,7 +93,15 @@ def process_elo(
     except Exception as e:
         raise HTTPException(status_code=400, detail="Error during processing: " + str(e))
 
-# Create endpoint to sign up for contest
+@app.post("/contests/{contest_id}/process_participation_days")
+def process_participation_days(
+    contest_id: int,
+    db: Session = Depends(get_db),
+    _: bool = Depends(verify_admin_token)  # Admin token check
+):
+    crud.process_participation_days(contest_id, db)
+    return {"message": "Participation days updated for contest participants"}
+
 @app.post("/contests/{contest_id}/signup/{user_id}")
 def signup_for_contest(
     contest_id: int,

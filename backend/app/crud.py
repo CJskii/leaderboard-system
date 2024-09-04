@@ -1,4 +1,4 @@
-import datetime
+from datetime import datetime, timezone
 
 from fastapi import HTTPException
 from sqlalchemy import desc, func
@@ -108,7 +108,7 @@ def signup_for_contest(user_id: int, contest_id: int, db: Session):
 
     contest, user = contest_user
 
-    signup_date = datetime.datetime.now(datetime.timezone.utc)
+    signup_date = datetime.now(timezone.utc)
     if contest.end_date < signup_date:
         raise ValueError("Contest has ended already")
 
@@ -129,3 +129,39 @@ def signup_for_contest(user_id: int, contest_id: int, db: Session):
     )
 
     db.commit()
+
+def process_participation_days(contest_id: int, db: Session):
+    contest = db.query(models.Contest).filter(models.Contest.id == contest_id).first()
+    if not contest:
+        raise HTTPException(status_code=404, detail="Contest not found")
+
+    end_date = contest.end_date
+    if end_date.tzinfo is None:
+        end_date = end_date.replace(tzinfo=timezone.utc)
+
+    now = datetime.now(timezone.utc)
+    if end_date > now:
+        raise HTTPException(status_code=400, detail="Contest is still running")
+
+    for user in contest.participants:
+        signup_record = db.query(contest_participants).filter(
+            contest_participants.c.user_id == user.id,
+            contest_participants.c.contest_id == contest_id
+        ).first()
+
+        if signup_record is None or signup_record.signup_date is None:
+            raise HTTPException(status_code=400, detail=f"Signup date not found for user {user.id}")
+
+        signup_date = signup_record.signup_date
+        if signup_date.tzinfo is None:
+            signup_date = signup_date.replace(tzinfo=timezone.utc)
+
+        participation_days = (end_date - signup_date).days + 1
+        if participation_days < 0:
+            participation_days = 0
+
+        user.participation_days += participation_days
+        db.add(user)
+
+    db.commit()
+

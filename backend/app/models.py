@@ -23,9 +23,9 @@ class Contest(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     # TODO: remove default values for start and end date and adjust tests accordingly
-    start_date = Column(DateTime, nullable=False, default=datetime.now(timezone.utc))
-    end_date = Column(DateTime, nullable=False, default=datetime.now(timezone.utc))
-    date = Column(DateTime, default=datetime.now(timezone.utc))
+    start_date = Column(DateTime(timezone=True), nullable=False, default=datetime.now(timezone.utc))
+    end_date = Column(DateTime(timezone=True), nullable=False, default=datetime.now(timezone.utc))
+    date = Column(DateTime(timezone=True), default=datetime.now(timezone.utc))
 
     participants = relationship("User", secondary="contest_participants")
     found_bugs = relationship("Bug", back_populates="contest")
