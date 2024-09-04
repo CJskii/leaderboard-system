@@ -1,7 +1,17 @@
-from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, DateTime, Table, func
+from sqlalchemy import (
+    Column,
+    Integer,
+    String,
+    Boolean,
+    ForeignKey,
+    DateTime,
+    Table,
+    func,
+)
 from sqlalchemy.orm import relationship, Session
 from .database import Base
 from datetime import datetime, timezone
+
 
 class User(Base):
     __tablename__ = "user"
@@ -19,6 +29,7 @@ class User(Base):
     elo_history = relationship("EloHistory", back_populates="user")
     reported_bugs = relationship("BugReport", back_populates="reporter")
 
+
 class Contest(Base):
     __tablename__ = "contest"
 
@@ -29,12 +40,14 @@ class Contest(Base):
     found_bugs = relationship("Bug", back_populates="contest")
     bug_reports = relationship("BugReport", back_populates="contest")
 
+
 contest_participants = Table(
-    'contest_participants',
+    "contest_participants",
     Base.metadata,
-    Column('contest_id', Integer, ForeignKey('contest.id')),
-    Column('user_id', Integer, ForeignKey('user.id'))
+    Column("contest_id", Integer, ForeignKey("contest.id")),
+    Column("user_id", Integer, ForeignKey("user.id")),
 )
+
 
 class Bug(Base):
     __tablename__ = "bug"
@@ -48,6 +61,7 @@ class Bug(Base):
     reported_by = relationship("User")
     contest = relationship("Contest", back_populates="found_bugs")
     reports = relationship("BugReport", back_populates="bug")
+
 
 class BugReport(Base):
     __tablename__ = "bug_report"
@@ -63,6 +77,7 @@ class BugReport(Base):
     bug = relationship("Bug", back_populates="reports")
     contest = relationship("Contest", back_populates="bug_reports")
 
+
 class ContestResult(Base):
     __tablename__ = "contest_result"
 
@@ -74,6 +89,7 @@ class ContestResult(Base):
 
     user = relationship("User", back_populates="contest_results")
     contest = relationship("Contest")
+
 
 class EloHistory(Base):
     __tablename__ = "elo_history"
@@ -88,6 +104,7 @@ class EloHistory(Base):
     user = relationship("User", back_populates="elo_history")
     contest = relationship("Contest")
 
+
 def update_elo_points(user: User, contest: Contest, elo_change: int, session: Session):
     elo_before = calculate_current_elo(user.id, session)
     elo_after = elo_before + elo_change
@@ -98,15 +115,20 @@ def update_elo_points(user: User, contest: Contest, elo_change: int, session: Se
         contest_id=contest.id,
         elo_points_before=elo_before,
         elo_points_after=elo_after,
-        change_reason="Contest participation"
+        change_reason="Contest participation",
     )
 
     session.add(elo_history_entry)
     session.commit()
 
+
 def calculate_current_elo(user_id: int, session: Session) -> int:
-    elo_points = session.query(
-        func.sum(EloHistory.elo_points_after - EloHistory.elo_points_before)
-    ).filter(EloHistory.user_id == user_id).scalar() # type: ignore
+    elo_points = (
+        session.query(
+            func.sum(EloHistory.elo_points_after - EloHistory.elo_points_before)
+        )
+        .filter(EloHistory.user_id == user_id)
+        .scalar()
+    )  # type: ignore
 
     return elo_points if elo_points is not None else 0
