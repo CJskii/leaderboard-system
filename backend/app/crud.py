@@ -1,4 +1,5 @@
 from fastapi import HTTPException, status
+from sqlalchemy import desc, func
 from sqlalchemy.orm import Session
 from . import models, schemas, auth
 from .elo_service import ELOService
@@ -34,11 +35,13 @@ def update_elo_points(db: Session, user: models.User, contest: models.Contest, e
 def process_contest_elo(contest_id: int, db: Session):
     contest = db.query(models.Contest).filter(models.Contest.id == contest_id).first()
     if not contest:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Contest not found")
+        raise HTTPException(status_code=404, detail="Contest not found")
 
     participants = contest.participants
     if not participants:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No participants found for this contest")
+        raise HTTPException(status_code=400, detail="No participants found for this contest")
+
+    processed_participants = []
 
     for user in participants:
         reported_bugs = db.query(models.BugReport).filter(
@@ -47,12 +50,46 @@ def process_contest_elo(contest_id: int, db: Session):
         ).all()
 
         if reported_bugs:
-            # Calculate ELO change
             elo_change = elo_service.calculate_elo_change(user, contest, reported_bugs, db)
             update_elo_points(db, user, contest, elo_change)
         else:
-            # Apply participation penalty if the user found no bugs
             elo_service.apply_participation_penalty(user, contest, db)
 
+        processed_participants.append(user)
+
     db.commit()
-    return {"message": "ELO points processed for contest participants"}
+
+    update_user_roles(db, processed_participants)
+
+    return processed_participants
+
+
+def update_user_roles(db: Session, users_to_update: list[models.User]):
+    leaderboard = db.query(models.User).join(models.EloHistory).group_by(models.User.id).order_by(
+        desc(func.sum(models.EloHistory.elo_points_after))
+    ).limit(100).all()
+
+    senior_watsons = set([user.id for user in leaderboard[:30]])  # Top 1-30
+    reserve_watsons = set([user.id for user in leaderboard[30:100]])  # Top 31-100
+
+    users_to_update_roles = []
+
+    for user in users_to_update:
+        current_role = user.role
+        if user.id in senior_watsons:
+            new_role = "senior_watson"
+        elif user.id in reserve_watsons:
+            new_role = "reserve_watson"
+        else:
+            new_role = "watson"
+
+        if current_role != new_role:
+            user.role = new_role
+            users_to_update_roles.append(user)
+
+    if users_to_update_roles:
+        db.bulk_save_objects(users_to_update_roles)
+        db.commit()
+
+    return users_to_update_roles
+

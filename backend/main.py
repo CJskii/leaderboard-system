@@ -3,7 +3,7 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from app import crud, models, schemas, auth
 from app.database import SessionLocal, engine
-from datetime import timedelta
+from datetime import timedelta, datetime
 import jwt
 import os
 
@@ -81,7 +81,11 @@ def process_elo(
     db: Session = Depends(get_db),
     _: bool = Depends(verify_admin_token)  # Ensure correct admin token is provided
 ):
-    return crud.process_contest_elo(contest_id, db)
+    # 1: Process ELO for all participants
+    participants = crud.process_contest_elo(contest_id, db)
+    # 2: Update user roles based on their new ELO rankings
+    crud.update_user_roles(db, participants)
+    return {"message": "ELO points and roles updated for contest participants"}
 
 @app.get("/users/", response_model=list[schemas.User])
 def read_users(skip: int = 0, limit: int = 10, db: Session = Depends(get_db)):
