@@ -111,6 +111,8 @@ def signup_for_contest(
     try:
         crud.signup_for_contest(user_id, contest_id, db)
         return {"message": "User signed up for contest"}
+    except HTTPException as e:
+        raise e
     except Exception as e:
         raise HTTPException(status_code=400, detail="Error during signup: " + str(e))
 

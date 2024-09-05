@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 
 from fastapi import HTTPException
-from sqlalchemy import desc, func
+from sqlalchemy import desc, func, exists
 from sqlalchemy.orm import Session
 
 from . import models, schemas, auth
@@ -98,27 +98,29 @@ def update_user_roles(users_to_update: list[models.User], db: Session ):
 
 
 def signup_for_contest(user_id: int, contest_id: int, db: Session):
-    contest_user = db.query(models.Contest, models.User).filter(
-        models.Contest.id == contest_id,
-        models.User.id == user_id
-    ).first()
-
-    if not contest_user:
-        raise ValueError("Contest or User not found")
-
-    contest, user = contest_user
-
     signup_date = datetime.now(timezone.utc)
+
+    contest = db.query(models.Contest).filter(models.Contest.id == contest_id).first()
+    if not contest:
+        raise HTTPException(status_code=404, detail="Contest not found")
+
     if contest.end_date < signup_date:
-        raise ValueError("Contest has ended already")
+        raise HTTPException(status_code=400, detail="Contest has ended already")
 
-    existing_signup = db.query(contest_participants).filter(
-        contest_participants.c.user_id == user.id,
-        contest_participants.c.contest_id == contest_id
-    ).exists()
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
 
-    if db.query(existing_signup).scalar():
-        raise ValueError("User is already signed up for this contest")
+    existing_signup = db.query(
+        exists().where(
+            contest_participants.c.user_id == user_id,
+        ).where(
+            contest_participants.c.contest_id == contest_id
+        )
+    ).scalar()
+
+    if existing_signup:
+        raise HTTPException(status_code=400, detail="User is already signed up for this contest")
 
     db.execute(
         contest_participants.insert().values(
