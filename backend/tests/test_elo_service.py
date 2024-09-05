@@ -1,9 +1,9 @@
 import pytest
 from sqlalchemy.orm import Session
 
-from app.database import SessionLocal, Base, engine
-from app.elo_service import ELOService
-from app.models import User, Contest, Bug, BugReport, EloHistory, BugSeverity
+from ..app.database import SessionLocal, Base, engine
+from ..app.elo_service import ELOService
+from ..app.models import User, Contest, Bug, BugReport, EloHistory, BugSeverity
 
 
 @pytest.fixture(scope="function")

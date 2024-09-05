@@ -1,6 +1,6 @@
 import math
 from sqlalchemy.orm import Session
-from app.models import calculate_current_elo, BugReport, EloHistory
+from ..app.models import calculate_current_elo, BugReport, EloHistory
 
 # Constants
 DUPLICATE_PENALTY_MULTIPLIER = 0.1  # All Watsons
