@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+
 from sqlalchemy import (
     Column,
     Integer,
@@ -7,10 +9,18 @@ from sqlalchemy import (
     DateTime,
     Table,
     func,
+    Index,
+    Enum,
 )
 from sqlalchemy.orm import relationship, Session
+
 from .database import Base
-from datetime import datetime, timezone
+
+
+class BugSeverity(str, Enum):
+    MEDIUM = "medium"
+    HIGH = "high"
+    CRITICAL = "critical"
 
 
 class User(Base):
@@ -35,10 +45,14 @@ class Contest(Base):
     id = Column(Integer, primary_key=True, index=True)
     # TODO: remove default values for start and end date and adjust tests accordingly
     start_date = Column(
-        DateTime(timezone=True), nullable=False, default=datetime.now(timezone.utc)
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
     )
     end_date = Column(
-        DateTime(timezone=True), nullable=False, default=datetime.now(timezone.utc)
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
     )
     date = Column(DateTime(timezone=True), default=datetime.now(timezone.utc))
 
@@ -61,7 +75,7 @@ class Bug(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     description = Column(String)
-    severity = Column(String)
+    severity = Column(String)  # TODO: change to Enum and update tests
     reported_by_id = Column(Integer, ForeignKey("user.id"))
     contest_id = Column(Integer, ForeignKey("contest.id"))
 
@@ -97,6 +111,7 @@ class EloHistory(Base):
 
     user = relationship("User", back_populates="elo_history")
     contest = relationship("Contest")
+    __table_args__ = (Index("idx_user_contest", "user_id", "contest_id"),)
 
 
 def update_elo_points(user: User, contest: Contest, elo_change: int, session: Session):

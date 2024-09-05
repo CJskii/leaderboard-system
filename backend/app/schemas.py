@@ -6,9 +6,9 @@ class UserBase(BaseModel):
 
 
 class UserCreate(UserBase):
-    username: str
-    password: str
-    email: str
+    username: str | None = None
+    password: str | None = None
+    email: str | None = None
 
 
 class User(UserBase):

@@ -1,8 +1,9 @@
 import pytest
-from app.elo_service import ELOService
-from app.models import User, Contest, Bug, BugReport, EloHistory
 from sqlalchemy.orm import Session
+
 from app.database import SessionLocal, Base, engine
+from app.elo_service import ELOService
+from app.models import User, Contest, Bug, BugReport, EloHistory, BugSeverity
 
 
 @pytest.fixture(scope="function")
@@ -76,7 +77,7 @@ def test_critical_bug_single_reporter(
 
     contest = Contest()
     bug = Bug(
-        severity="critical",
+        severity=BugSeverity.CRITICAL,
         description="Critical bug description",
         reported_by_id=user.id,
         contest_id=contest.id,
@@ -107,7 +108,7 @@ def test_critical_bug_multiple_reporters_same_league(
 
     contest = Contest()
     bug = Bug(
-        severity="critical",
+        severity=BugSeverity.CRITICAL,
         description="Critical bug description",
         reported_by_id=user1.id,
         contest_id=contest.id,
@@ -143,7 +144,7 @@ def test_critical_bug_multiple_reporters_different_leagues(
 
     contest = Contest()
     bug = Bug(
-        severity="critical",
+        severity=BugSeverity.CRITICAL,
         description="Critical bug description",
         reported_by_id=user1.id,
         contest_id=contest.id,
@@ -177,7 +178,7 @@ def test_high_bug_single_reporter(
     user = default_leaderboard["watson"]
     contest = Contest()
     bug = Bug(
-        severity="high",
+        severity=BugSeverity.HIGH,
         description="High severity bug",
         reported_by_id=user.id,
         contest_id=contest.id,
@@ -207,7 +208,7 @@ def test_high_bug_multiple_reporters_same_league(
 
     contest = Contest()
     bug = Bug(
-        severity="high",
+        severity=BugSeverity.HIGH,
         description="High severity bug",
         reported_by_id=user1.id,
         contest_id=contest.id,
@@ -243,7 +244,7 @@ def test_high_bug_multiple_reporters_different_leagues(
 
     contest = Contest()
     bug = Bug(
-        severity="high",
+        severity=BugSeverity.HIGH,
         description="High severity bug",
         reported_by_id=user1.id,
         contest_id=contest.id,
@@ -277,7 +278,7 @@ def test_medium_bug_single_reporter(
     user = default_leaderboard["watson"]
     contest = Contest()
     bug = Bug(
-        severity="medium",
+        severity=BugSeverity.MEDIUM,
         description="Medium severity bug",
         reported_by_id=user.id,
         contest_id=contest.id,
@@ -307,7 +308,7 @@ def test_medium_bug_multiple_reporters_same_league(
 
     contest = Contest()
     bug = Bug(
-        severity="medium",
+        severity=BugSeverity.MEDIUM,
         description="Medium severity bug",
         reported_by_id=user1.id,
         contest_id=contest.id,
@@ -343,7 +344,7 @@ def test_medium_bug_multiple_reporters_different_leagues(
 
     contest = Contest()
     bug = Bug(
-        severity="medium",
+        severity=BugSeverity.MEDIUM,
         description="Medium severity bug",
         reported_by_id=user1.id,
         contest_id=contest.id,
@@ -382,19 +383,19 @@ def test_mixed_severity_bugs_multiple_reporters(
     db_session.commit()
 
     bug1 = Bug(
-        severity="critical",
+        severity=BugSeverity.CRITICAL,
         description="Critical severity bug",
         reported_by_id=user1.id,
         contest_id=contest.id,
     )
     bug2 = Bug(
-        severity="high",
+        severity=BugSeverity.HIGH,
         description="High severity bug",
         reported_by_id=user2.id,
         contest_id=contest.id,
     )
     bug3 = Bug(
-        severity="medium",
+        severity=BugSeverity.MEDIUM,
         description="Medium severity bug",
         reported_by_id=user2.id,
         contest_id=contest.id,
@@ -432,19 +433,19 @@ def test_multiple_bugs_reported_by_same_user(
     contest = Contest()
 
     bug1 = Bug(
-        severity="medium",
+        severity=BugSeverity.MEDIUM,
         description="Medium severity bug",
         reported_by_id=user.id,
         contest_id=contest.id,
     )
     bug2 = Bug(
-        severity="high",
+        severity=BugSeverity.HIGH,
         description="High severity bug",
         reported_by_id=user.id,
         contest_id=contest.id,
     )
     bug3 = Bug(
-        severity="critical",
+        severity=BugSeverity.CRITICAL,
         description="Critical severity bug",
         reported_by_id=user.id,
         contest_id=contest.id,
@@ -476,7 +477,7 @@ def test_senior_watson_earns_less_elo(
 
     contest = Contest()
     bug = Bug(
-        severity="high",
+        severity=BugSeverity.HIGH,
         description="High severity bug",
         reported_by_id=senior_user.id,
         contest_id=contest.id,
