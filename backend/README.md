@@ -1,4 +1,4 @@
-# Project Title
+# Leaderboard system - backend
 
 This repository contains the source code for a contest management system with ELO rating calculations. The system allows
 users to sign up for contests, and administrators to process ELO ratings based on contest results.
