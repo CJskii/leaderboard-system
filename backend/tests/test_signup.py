@@ -5,10 +5,10 @@ from datetime import datetime, timedelta, timezone
 
 from sqlalchemy.orm import Session
 
-from app import models
-from app.database import SessionLocal, engine
-from app.models import contest_participants
-from main import app
+from ..app import models
+from ..app.database import SessionLocal, engine
+from ..app.models import contest_participants
+from ..main import app
 
 client = TestClient(app)
 
