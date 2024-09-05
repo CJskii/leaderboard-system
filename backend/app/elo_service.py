@@ -7,6 +7,7 @@ DUPLICATE_PENALTY_MULTIPLIER = 0.1  # All Watsons
 INVALID_REPORT_PENALTY = 10  # All Watsons
 NO_BUGS_FOUND_PENALTY = 20  # Senior / Reserve Watson
 
+
 class ELOService:
     def __init__(self, k_factor=32):
         self.k_factor = k_factor  # Determines the impact of each game on ELO rating
@@ -17,12 +18,13 @@ class ELOService:
 
     @staticmethod
     def get_opponent_elos(contest, user_id, session: Session):
-        opponent_elos = session.query(EloHistory.elo_points_after).select_from(BugReport).join(
-            EloHistory, BugReport.user_id == EloHistory.user_id
-        ).filter(
-            BugReport.contest_id == contest.id,
-            BugReport.user_id != user_id
-        ).all()
+        opponent_elos = (
+            session.query(EloHistory.elo_points_after)
+            .select_from(BugReport)
+            .join(EloHistory, BugReport.user_id == EloHistory.user_id)
+            .filter(BugReport.contest_id == contest.id, BugReport.user_id != user_id)
+            .all()
+        )
 
         return [elo[0] for elo in opponent_elos if elo]
 
@@ -34,19 +36,19 @@ class ELOService:
 
     @staticmethod
     def get_severity_weight(severity):
-        severity_weights = {
-            'medium': 1.0,
-            'high': 1.5,
-            'critical': 2.0
-        }
+        severity_weights = {"medium": 1.0, "high": 1.5, "critical": 2.0}
         return severity_weights.get(severity.lower(), 1.0)
 
     @staticmethod
     def get_duplicate_penalty(bug_report, session: Session):
-        duplicate_count = session.query(BugReport).filter(
-            BugReport.bug_id == bug_report.bug_id,
-            BugReport.user_id != bug_report.user_id
-        ).count()
+        duplicate_count = (
+            session.query(BugReport)
+            .filter(
+                BugReport.bug_id == bug_report.bug_id,
+                BugReport.user_id != bug_report.user_id,
+            )
+            .count()
+        )
 
         penalty = DUPLICATE_PENALTY_MULTIPLIER * duplicate_count
         return penalty
@@ -63,9 +65,9 @@ class ELOService:
             win_probability = self.calculate_win_probability(user_elo, opponent_elo)
 
             # Adjust ELO based on the league: Higher ELO users should gain less
-            if user.role == 'senior_watson':
+            if user.role == "senior_watson":
                 adjusted_k_factor = self.k_factor * 0.75
-            elif user.role == 'reserve_watson':
+            elif user.role == "reserve_watson":
                 adjusted_k_factor = self.k_factor * 0.9
             else:
                 adjusted_k_factor = self.k_factor
@@ -79,7 +81,9 @@ class ELOService:
         return total_elo_change
 
     @staticmethod
-    def apply_invalid_submission_penalty(user, contest, invalid_reports, session: Session):
+    def apply_invalid_submission_penalty(
+        user, contest, invalid_reports, session: Session
+    ):
         penalty = INVALID_REPORT_PENALTY * invalid_reports
         current_elo = calculate_current_elo(user.id, session)
         new_elo = max(current_elo - penalty, 0)
@@ -89,7 +93,7 @@ class ELOService:
             contest_id=contest.id,
             elo_points_before=current_elo,
             elo_points_after=new_elo,
-            change_reason="Penalty for invalid submissions"
+            change_reason="Penalty for invalid submissions",
         )
 
         session.add(elo_history_entry)
@@ -97,16 +101,22 @@ class ELOService:
 
     @staticmethod
     def apply_participation_penalty(user, contest, session: Session):
-        if user.role in ['senior_watson', 'reserve_watson']:
-            others_found_bugs = session.query(BugReport).filter(
-                BugReport.contest_id == contest.id,
-                BugReport.user_id != user.id
-            ).count()
+        if user.role in ["senior_watson", "reserve_watson"]:
+            others_found_bugs = (
+                session.query(BugReport)
+                .filter(
+                    BugReport.contest_id == contest.id, BugReport.user_id != user.id
+                )
+                .count()
+            )
 
-            user_found_bugs = session.query(BugReport).filter(
-                BugReport.user_id == user.id,
-                BugReport.contest_id == contest.id
-            ).count()
+            user_found_bugs = (
+                session.query(BugReport)
+                .filter(
+                    BugReport.user_id == user.id, BugReport.contest_id == contest.id
+                )
+                .count()
+            )
 
             if others_found_bugs > 0 and user_found_bugs == 0:
                 penalty = NO_BUGS_FOUND_PENALTY
@@ -118,7 +128,7 @@ class ELOService:
                     contest_id=contest.id,
                     elo_points_before=current_elo,
                     elo_points_after=new_elo,
-                    change_reason=f"Penalty for {user.role} not finding bugs"
+                    change_reason=f"Penalty for {user.role} not finding bugs",
                 )
 
                 session.add(elo_history_entry)
