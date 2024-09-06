@@ -1,3 +1,4 @@
+import enum
 from datetime import datetime, timezone
 
 from sqlalchemy import (
@@ -17,7 +18,7 @@ from sqlalchemy.orm import relationship, Session
 from .database import Base
 
 
-class BugSeverity(str, Enum):
+class BugSeverity(str, enum.Enum):
     MEDIUM = "medium"
     HIGH = "high"
     CRITICAL = "critical"
@@ -75,7 +76,7 @@ class Bug(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     description = Column(String)
-    severity = Column(String)  # TODO: change to Enum and update tests
+    severity = Column(Enum(BugSeverity), nullable=False)
     reported_by_id = Column(Integer, ForeignKey("user.id"))
     contest_id = Column(Integer, ForeignKey("contest.id"))
 
@@ -93,7 +94,6 @@ class BugReport(Base):
     contest_id = Column(Integer, ForeignKey("contest.id"))
     report_time = Column(DateTime, default=datetime.now(timezone.utc))
 
-    # Relationships
     reporter = relationship("User", back_populates="reported_bugs")
     bug = relationship("Bug", back_populates="reports")
     contest = relationship("Contest", back_populates="bug_reports")
