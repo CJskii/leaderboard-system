@@ -119,7 +119,9 @@ def update_user_roles(users_to_update: list[models.User], db: Session):
 
 
 def signup_for_contest(user_id: int, contest_id: int, db: Session):
-    signup_date = datetime.now(timezone.utc)
+    signup_date = (
+        datetime.now()
+    )  # psql: datetime.now(timezone.utc) should be used instead of datetime.now()
 
     contest = db.query(models.Contest).filter(models.Contest.id == contest_id).first()
     if not contest:

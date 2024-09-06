@@ -1,9 +1,10 @@
 import os
+from datetime import datetime, timedelta, timezone
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import update
 from sqlalchemy.orm import Session
-from datetime import datetime, timedelta, timezone
 
 from ..app import models
 from ..app.database import SessionLocal, engine
@@ -237,9 +238,8 @@ def test_process_participation_days_contest_still_running(setup_database: Sessio
     contest.end_date = datetime.now(timezone.utc) + timedelta(days=2)
     session.commit()
 
-    assert contest.end_date > datetime.now(
-        timezone.utc
-    ), "Contest end_date should be in the future"
+    # psql: datetime.now(timezone.utc) should be used instead of datetime.now()
+    assert contest.end_date > datetime.now(), "Contest end_date should be in the future"
 
     users = session.query(models.User).all()
 
