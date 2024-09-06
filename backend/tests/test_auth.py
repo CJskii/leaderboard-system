@@ -1,9 +1,9 @@
 import pytest
 import warnings
 from fastapi.testclient import TestClient
-from main import app
-from app.database import SessionLocal, engine
-from app import models
+from ..main import app
+from ..app.database import SessionLocal, engine
+from ..app import models
 
 client = TestClient(app)
 
